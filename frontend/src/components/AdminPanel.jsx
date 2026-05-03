@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import axios from 'axios'
 
-function AdminPanel({ songs, onRefresh }) {
+function AdminPanel({ songs, onRefresh, onPlay, currentSong, isPlaying }) {
   const [showForm, setShowForm] = useState(false)
   const [editingSong, setEditingSong] = useState(null)
   const [formData, setFormData] = useState({
@@ -97,6 +97,27 @@ function AdminPanel({ songs, onRefresh }) {
     return 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=elegant%20music%20album%20cover%20art%20minimalist%20artistic%20style%20with%20warm%20soft%20colors&image_size=square'
   }
 
+  const handleRowClick = (song) => {
+    if (onPlay) {
+      onPlay(song)
+    }
+  }
+
+  const handlePlayClick = (e, song) => {
+    e.stopPropagation()
+    if (onPlay) {
+      onPlay(song)
+    }
+  }
+
+  const isCurrentSong = (song) => {
+    return currentSong?.id === song.id
+  }
+
+  const isSongPlaying = (song) => {
+    return isCurrentSong(song) && isPlaying
+  }
+
   return (
     <div className="admin-panel">
       <div className="admin-header">
@@ -183,7 +204,7 @@ function AdminPanel({ songs, onRefresh }) {
       )}
 
       <div className="song-list">
-        <h3>歌曲列表 ({songs.length})</h3>
+        <h3>歌曲列表 ({songs.length}) <span style={{ fontSize: '0.9rem', color: '#8a8a8a', fontWeight: 'normal' }}>(点击歌曲可播放)</span></h3>
         {songs.length === 0 ? (
           <p className="empty-admin">暂无歌曲，请点击上方按钮添加</p>
         ) : (
@@ -193,31 +214,81 @@ function AdminPanel({ songs, onRefresh }) {
                 <th>封面</th>
                 <th>歌曲名</th>
                 <th>歌手</th>
+                <th>音频</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
               {songs.map((song) => (
-                <tr key={song.id}>
+                <tr 
+                  key={song.id} 
+                  className={`song-row ${isCurrentSong(song) ? 'active' : ''}`}
+                  onClick={() => handleRowClick(song)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <td>
-                    <img 
-                      src={getCoverUrl(song.cover)} 
-                      alt={song.title}
-                      className="table-cover"
-                    />
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <img 
+                        src={getCoverUrl(song.cover)} 
+                        alt={song.title}
+                        className="table-cover"
+                      />
+                      {isSongPlaying(song) && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          background: 'rgba(0,0,0,0.6)',
+                          borderRadius: '50%',
+                          width: '30px',
+                          height: '30px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: '12px'
+                        }}>
+                          ▶
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="song-title">{song.title}</td>
                   <td>{song.artist}</td>
+                  <td>
+                    {song.audio_file ? (
+                      <span style={{ color: '#27ae60' }}>✓ 已上传</span>
+                    ) : (
+                      <span style={{ color: '#e74c3c' }}>✗ 未上传</span>
+                    )}
+                  </td>
                   <td className="actions">
                     <button 
                       className="edit-btn"
-                      onClick={() => handleEdit(song)}
+                      onClick={(e) => { e.stopPropagation(); handleEdit(song) }}
                     >
                       编辑
                     </button>
                     <button 
+                      className="play-btn-small"
+                      onClick={(e) => handlePlayClick(e, song)}
+                      title={isSongPlaying(song) ? '暂停' : '播放'}
+                      style={{
+                        background: isCurrentSong(song) ? '#c9a87c' : '#d4c4b0',
+                        color: 'white',
+                        border: 'none',
+                        padding: '0.5rem 0.8rem',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        marginRight: '0.5rem'
+                      }}
+                    >
+                      {isSongPlaying(song) ? '⏸' : '▶'}
+                    </button>
+                    <button 
                       className="delete-btn"
-                      onClick={() => handleDelete(song)}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(song) }}
                     >
                       删除
                     </button>
