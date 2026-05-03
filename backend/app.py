@@ -4,28 +4,17 @@ from werkzeug.utils import secure_filename
 import os
 import uuid
 import sqlite3
-from datetime import datetime
-import logging
-
-logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
-
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
+CORS(app)
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['DATABASE'] = os.path.join(basedir, 'music.db')
-app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'uploads')
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+DATABASE = os.path.join(basedir, 'music.db')
+UPLOAD_FOLDER = os.path.join(basedir, 'uploads')
+MAX_CONTENT_LENGTH = 50 * 1024 * 1024
 
 def get_db():
-    conn = sqlite3.connect(app.config['DATABASE'])
+    conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -70,13 +59,17 @@ def get_songs():
     songs = cursor.fetchall()
     conn.close()
     
-    return jsonify([{
-        'id': song['id'],
-        'title': song['title'],
-        'artist': song['artist'],
-        'cover': song['cover'],
-        'audio_file': song['audio_file']
-    } for song in songs])
+    result = []
+    for song in songs:
+        result.append({
+            'id': song['id'],
+            'title': song['title'],
+            'artist': song['artist'],
+            'cover': song['cover'],
+            'audio_file': song['audio_file']
+        })
+    
+    return jsonify(result)
 
 @app.route('/api/songs/<song_id>', methods=['GET'])
 def get_song(song_id):
@@ -115,7 +108,7 @@ def create_song():
         if cover_file.filename != '':
             if allowed_file(cover_file.filename, {'png', 'jpg', 'jpeg', 'gif', 'webp'}):
                 cover_filename = str(uuid.uuid4()) + '_' + secure_filename(cover_file.filename)
-                cover_path = os.path.join(app.config['UPLOAD_FOLDER'], 'covers')
+                cover_path = os.path.join(UPLOAD_FOLDER, 'covers')
                 os.makedirs(cover_path, exist_ok=True)
                 cover_file.save(os.path.join(cover_path, cover_filename))
             else:
@@ -126,7 +119,7 @@ def create_song():
         if audio_file.filename != '':
             if allowed_file(audio_file.filename, {'mp3', 'wav', 'ogg', 'm4a', 'flac'}):
                 audio_filename = str(uuid.uuid4()) + '_' + secure_filename(audio_file.filename)
-                audio_path = os.path.join(app.config['UPLOAD_FOLDER'], 'audio')
+                audio_path = os.path.join(UPLOAD_FOLDER, 'audio')
                 os.makedirs(audio_path, exist_ok=True)
                 audio_file.save(os.path.join(audio_path, audio_filename))
             else:
@@ -176,12 +169,12 @@ def update_song(song_id):
         if cover_file.filename != '':
             if allowed_file(cover_file.filename, {'png', 'jpg', 'jpeg', 'gif', 'webp'}):
                 if cover_filename:
-                    old_cover_path = os.path.join(app.config['UPLOAD_FOLDER'], 'covers', cover_filename)
+                    old_cover_path = os.path.join(UPLOAD_FOLDER, 'covers', cover_filename)
                     if os.path.exists(old_cover_path):
                         os.remove(old_cover_path)
                 
                 cover_filename = str(uuid.uuid4()) + '_' + secure_filename(cover_file.filename)
-                cover_path = os.path.join(app.config['UPLOAD_FOLDER'], 'covers')
+                cover_path = os.path.join(UPLOAD_FOLDER, 'covers')
                 os.makedirs(cover_path, exist_ok=True)
                 cover_file.save(os.path.join(cover_path, cover_filename))
             else:
@@ -193,12 +186,12 @@ def update_song(song_id):
         if audio_file.filename != '':
             if allowed_file(audio_file.filename, {'mp3', 'wav', 'ogg', 'm4a', 'flac'}):
                 if audio_filename:
-                    old_audio_path = os.path.join(app.config['UPLOAD_FOLDER'], 'audio', audio_filename)
+                    old_audio_path = os.path.join(UPLOAD_FOLDER, 'audio', audio_filename)
                     if os.path.exists(old_audio_path):
                         os.remove(old_audio_path)
                 
                 audio_filename = str(uuid.uuid4()) + '_' + secure_filename(audio_file.filename)
-                audio_path = os.path.join(app.config['UPLOAD_FOLDER'], 'audio')
+                audio_path = os.path.join(UPLOAD_FOLDER, 'audio')
                 os.makedirs(audio_path, exist_ok=True)
                 audio_file.save(os.path.join(audio_path, audio_filename))
             else:
@@ -232,12 +225,12 @@ def delete_song(song_id):
         return jsonify({'error': 'Song not found'}), 404
     
     if song['cover']:
-        cover_path = os.path.join(app.config['UPLOAD_FOLDER'], 'covers', song['cover'])
+        cover_path = os.path.join(UPLOAD_FOLDER, 'covers', song['cover'])
         if os.path.exists(cover_path):
             os.remove(cover_path)
     
     if song['audio_file']:
-        audio_path = os.path.join(app.config['UPLOAD_FOLDER'], 'audio', song['audio_file'])
+        audio_path = os.path.join(UPLOAD_FOLDER, 'audio', song['audio_file'])
         if os.path.exists(audio_path):
             os.remove(audio_path)
     
@@ -249,15 +242,20 @@ def delete_song(song_id):
 
 @app.route('/uploads/covers/<filename>')
 def serve_cover(filename):
-    return send_from_directory(os.path.join(app.config['UPLOAD_FOLDER'], 'covers'), filename)
+    return send_from_directory(os.path.join(UPLOAD_FOLDER, 'covers'), filename)
 
 @app.route('/uploads/audio/<filename>')
 def serve_audio(filename):
-    return send_from_directory(os.path.join(app.config['UPLOAD_FOLDER'], 'audio'), filename)
+    return send_from_directory(os.path.join(UPLOAD_FOLDER, 'audio'), filename)
+
+@app.route('/')
+def index():
+    return 'Music Player API is running!'
 
 if __name__ == '__main__':
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'covers'), exist_ok=True)
-    os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'audio'), exist_ok=True)
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_FOLDER, 'covers'), exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_FOLDER, 'audio'), exist_ok=True)
     init_db()
-    app.run(debug=False, host='0.0.0.0', port=5000, use_reloader=False)
+    print(f"Routes registered: {[r.rule for r in app.url_map.iter_rules()]}")
+    app.run(debug=False, host='127.0.0.1', port=5000)
