@@ -89,7 +89,15 @@ function App() {
             />
             <Route 
               path="/admin" 
-              element={<AdminPanel songs={songs} onRefresh={fetchSongs} />} 
+              element={
+                <AdminPanel 
+                  songs={songs} 
+                  onRefresh={fetchSongs}
+                  onPlay={playSong}
+                  currentSong={currentSong}
+                  isPlaying={isPlaying}
+                />
+              } 
             />
           </Routes>
         </main>
@@ -103,6 +111,7 @@ function App() {
           onPrev={playPrev}
           onToggleLoop={() => setIsLoop(!isLoop)}
           onSongEnd={handleSongEnd}
+          songs={songs}
         />
       </div>
     </Router>

@@ -8,27 +8,32 @@ function MusicPlayer({
   onNext, 
   onPrev, 
   onToggleLoop,
-  onSongEnd 
+  onSongEnd,
+  songs 
 }) {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const audioRef = useRef(null)
 
+  const hasAudioFile = currentSong?.audio_file
+
   useEffect(() => {
-    if (audioRef.current) {
+    if (audioRef.current && hasAudioFile) {
       if (isPlaying) {
         audioRef.current.play().catch(e => console.log('Play error:', e))
       } else {
         audioRef.current.pause()
       }
     }
-  }, [isPlaying, currentSong])
+  }, [isPlaying, hasAudioFile])
 
   useEffect(() => {
-    if (audioRef.current && currentSong?.audio_file) {
+    if (audioRef.current && hasAudioFile) {
+      setCurrentTime(0)
+      setDuration(0)
       audioRef.current.load()
     }
-  }, [currentSong])
+  }, [currentSong?.id, hasAudioFile])
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
@@ -50,6 +55,26 @@ function MusicPlayer({
     }
   }
 
+  const handlePlayPause = () => {
+    if (!hasAudioFile) {
+      console.log('No audio file available')
+      return
+    }
+    onPlayPause()
+  }
+
+  const handleNext = () => {
+    if (songs && songs.length > 0) {
+      onNext()
+    }
+  }
+
+  const handlePrev = () => {
+    if (songs && songs.length > 0) {
+      onPrev()
+    }
+  }
+
   const formatTime = (time) => {
     if (isNaN(time)) return '0:00'
     const minutes = Math.floor(time / 60)
@@ -64,16 +89,24 @@ function MusicPlayer({
     return 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=elegant%20music%20album%20cover%20art%20minimalist%20artistic%20style%20with%20warm%20soft%20colors&image_size=square'
   }
 
+  const getAudioUrl = (audioFile) => {
+    if (audioFile) {
+      return `/uploads/audio/${audioFile}`
+    }
+    return ''
+  }
+
   return (
     <div className="player">
-      {currentSong?.audio_file && (
+      {hasAudioFile && (
         <audio
           ref={audioRef}
-          src={`/uploads/audio/${currentSong.audio_file}`}
+          src={getAudioUrl(currentSong.audio_file)}
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
           onEnded={onSongEnd}
           loop={isLoop}
+          preload="metadata"
         />
       )}
 
@@ -84,13 +117,20 @@ function MusicPlayer({
               <img 
                 src={getCoverUrl(currentSong.cover)} 
                 alt={currentSong.title}
-                className={`cover-image ${isPlaying ? 'rotating' : ''}`}
+                className={`cover-image ${isPlaying && hasAudioFile ? 'rotating' : ''}`}
               />
             </div>
             
             <div className="player-info">
               <div className="player-title">{currentSong.title}</div>
-              <div className="player-artist">{currentSong.artist}</div>
+              <div className="player-artist">
+                {currentSong.artist}
+                {!hasAudioFile && (
+                  <span style={{ color: '#e74c3c', marginLeft: '8px', fontSize: '0.8rem' }}>
+                    (无音频文件)
+                  </span>
+                )}
+              </div>
             </div>
           </>
         ) : (
@@ -109,25 +149,33 @@ function MusicPlayer({
             🔁
           </button>
           
-          <button className="control-btn prev-btn" onClick={onPrev}>
+          <button 
+            className="control-btn prev-btn" 
+            onClick={handlePrev}
+            disabled={!songs || songs.length === 0}
+          >
             ⏮
           </button>
           
           <button 
             className="control-btn play-btn" 
-            onClick={onPlayPause}
-            disabled={!currentSong}
+            onClick={handlePlayPause}
+            disabled={!currentSong || !hasAudioFile}
           >
             {isPlaying ? '⏸' : '▶'}
           </button>
           
-          <button className="control-btn next-btn" onClick={onNext}>
+          <button 
+            className="control-btn next-btn" 
+            onClick={handleNext}
+            disabled={!songs || songs.length === 0}
+          >
             ⏭
           </button>
         </div>
       </div>
 
-      {currentSong && (
+      {currentSong && hasAudioFile && (
         <div className="player-progress">
           <span className="time-display">{formatTime(currentTime)}</span>
           <input
@@ -139,6 +187,14 @@ function MusicPlayer({
             className="progress-bar"
           />
           <span className="time-display">{formatTime(duration)}</span>
+        </div>
+      )}
+
+      {currentSong && !hasAudioFile && (
+        <div className="player-progress" style={{ justifyContent: 'center' }}>
+          <span style={{ color: '#e74c3c', fontSize: '0.9rem' }}>
+            请前往管理后台上传音频文件
+          </span>
         </div>
       )}
     </div>
