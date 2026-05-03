@@ -72,14 +72,10 @@ function AdminPanel({ songs, onRefresh }) {
       }
 
       if (editingSong) {
-        await axios.put(`/api/songs/${editingSong.id}`, data, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        })
+        await axios.put(`/api/songs/${editingSong.id}`, data)
         setMessage({ type: 'success', text: '歌曲更新成功！' })
       } else {
-        await axios.post('/api/songs', data, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        })
+        await axios.post('/api/songs', data)
         setMessage({ type: 'success', text: '歌曲添加成功！' })
       }
 
